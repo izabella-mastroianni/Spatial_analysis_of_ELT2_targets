@@ -1,0 +1,54 @@
+---
+title: "210405_ELT2_targets_spatial_analysis"
+author: "IRM"
+date: "210405"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Install libraries
+
+```{r}
+# install.packages("knitr")
+# install.packages("readxl")
+# install.packages("tidyverse")
+# install.packages("ggpubr")
+# install.packages("mratios")
+# install.packages("dplyr")
+```
+
+
+Load libraries
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(tidyverse)
+library(mratios)
+library(rio)
+```
+
+annotated peaks rds file
+
+```{r}
+readRDS("annotatedPeaks.rds")
+```
+
+```{r}
+convert("annotatedPeaks.rds", "annotatedPeaks.csv")
+```
+
+
+
+```{r}
+columns_selected <- "annotedPeaks" %>%
+  select(seqnames, ranges)
+```
+

@@ -1,0 +1,195 @@
+---
+title: "210407_ELT2_targets_spatial_analysis"
+author: "IRM"
+date: "210407"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Install libraries
+
+```{r}
+# install.packages("knitr")
+# install.packages("readxl")
+# install.packages("tidyverse")
+# install.packages("ggpubr")
+# install.packages("mratios")
+# install.packages("dplyr")
+# install.packages("chromoMap")
+```
+
+
+Load libraries
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(tidyverse)
+library(mratios)
+library(chromoMap)
+```
+
+annotated peaks rds file -> data frame
+
+```{r}
+elt2_GRange <- readRDS("annotatedPeaks.rds")
+elt2_peaks <- as.data.frame(elt2_GRange) %>% rowid_to_column() %>% dplyr::select(-rowid)
+```
+
+
+```{r}
+elt2_peaks %>% head()
+```
+
+```{r}
+colnames(elt2_peaks)
+```
+
+
+filtering for just L1 peaks that = 1 because this means they are changing and the dineen data only looked at L1
+
+```{r}
+elt2_peaks_L1_IDR <- elt2_peaks %>%
+  filter(L1_IDR == 1)
+
+```
+
+setting up chromosome data for chromoMap format, no row or column names allowed, just chromosome then start and end positions
+
+```{r}
+chr_file_2 <- elt2_peaks_L1_IDR %>% 
+  select(seqnames, start_position, end_position) %>%
+  remove_rownames
+
+chr_file_2$seqnames <- as.character(chr_file_2$seqnames)
+class(chr_file_2$seqnames)
+chr_file_2$start_position <- as.numeric(chr_file_2$start_position)
+class(chr_file_2$start_position)
+chr_file_2$end_position <- as.numeric(chr_file_2$end_position)
+class(chr_file_2$end_position)
+
+colnames(chr_file_2) <- NULL
+```
+
+
+```{r}
+head(chr_file_2)
+```
+
+
+save as a tab delineated text file
+```{r}
+write.table(chr_file_2, file = "chr_file_2.txt", quote = FALSE, sep="\t")
+```
+
+
+
+```{r}
+head(elt2_peaks_L1_IDR)
+```
+
+
+creating annotated data file
+
+```{r}
+bound_genes_class_assignments <- read.table("Bound_Genes_Class_Assignments.txt", header = TRUE, sep = ",", dec = ".")
+
+bound_class_assignments <- as.data.frame(bound_genes_class_assignments)
+```
+
+
+```{r}
+merged_peaks_with_class_assignments <- merge(x=bound_class_assignments, y=elt2_peaks_L1_IDR, by.x="WBGeneID", by.y="feature") 
+
+print(merged_peaks_with_class_assignments)
+```
+
+```{r}
+merged_peaks_and_class <- merged_peaks_with_class_assignments %>% 
+  mutate(
+  L1_peak_summit_mean = rowMeans(merged_peaks_with_class_assignments[,c('L1_peak_1_summit', 'L1_peak_2_summit')], na.rm=TRUE)
+  )
+
+merged_peaks_and_class$seqnames <- as.character(merged_peaks_and_class$seqnames)
+merged_peaks_and_class$start_position <- as.numeric(merged_peaks_and_class$start_position)
+merged_peaks_and_class$end_position <- as.numeric(merged_peaks_and_class$end_position)
+
+print(merged_peaks_and_class)
+```
+
+~trouble shooting class column not being character values wait actually it is~
+```{r}
+class(merged_peaks_and_class$WBGeneID)
+class(merged_peaks_and_class$seqnames)
+class(merged_peaks_and_class$start_position)
+class(merged_peaks_and_class$end_position)
+class(merged_peaks_and_class$class)
+```
+
+
+L1_peak_summit_mean,(not including for the minute because code not working)
+
+```{r}
+anno_file_2 <- merged_peaks_and_class %>% 
+  select(WBGeneID, seqnames, start_position, end_position, class)
+
+head(merged_peaks_and_class[,c("WBGeneID","seqnames")])
+
+rownames(anno_file_2) <- NULL
+
+colnames(anno_file_2) <- NULL
+```
+
+
+```{r}
+head(anno_file_2)
+```
+
+
+
+save as a tab delineated text file
+```{r}
+write.table(anno_file_2, file = "anno_file_2.txt", quote = FALSE, sep="\t")
+```
+
+
+
+
+chromoMap begins here
+
+```{r}
+chr_file <- read.table("ce11.chrom.sizes.txt")
+
+anno_file_2 <- read.table("anno_file_2.txt") %>% dplyr::select(-V1)
+anno_file_2
+```
+
+
+```{r}
+chromoMap(list(chr_file), list(anno_file_2),
+          data_based_color_map = T, 
+          data_type = "categorical", 
+          legend = T, lg_x = 300,
+          lg_y = 300, 
+          canvas_width = 1000,
+          chr_width = 20,
+          chr_length = 7)
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+

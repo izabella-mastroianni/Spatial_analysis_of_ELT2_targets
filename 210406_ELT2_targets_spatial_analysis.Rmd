@@ -1,0 +1,181 @@
+---
+title: "210406_ELT2_targets_spatial_analysis"
+author: "IRM"
+date: "210406"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Install libraries
+
+```{r}
+# install.packages("knitr")
+# install.packages("readxl")
+# install.packages("tidyverse")
+# install.packages("ggpubr")
+# install.packages("mratios")
+# install.packages("dplyr")
+# install.packages("chromoMap")
+```
+
+
+Load libraries
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(tidyverse)
+library(mratios)
+library(chromoMap)
+```
+
+annotated peaks rds file -> data frame
+
+```{r}
+elt2_GRange <- readRDS("annotatedPeaks.rds")
+elt2_peaks <- as.data.frame(elt2_GRange)
+```
+
+
+```{r}
+elt2_peaks %>% head()
+```
+
+```{r}
+colnames(elt2_peaks)
+```
+
+
+filtering for just L1 peaks that = 1 because this means they are changing and the dineen data only looked at L1
+
+```{r}
+elt2_peaks_L1_IDR <- elt2_peaks %>%
+  filter(L1_IDR == 1)
+
+```
+
+setting up chromosome data for chromoMap format, no row or column names allowed, just chromosome then start and end positions
+
+```{r}
+chr_file_1 <- elt2_peaks_L1_IDR %>% 
+  select(seqnames, start_position, end_position) %>%
+  remove_rownames
+
+chr_file_1$seqnames <- as.character(chr_file_1$seqnames)
+class(chr_file_1$seqnames)
+chr_file_1$start_position <- as.numeric(chr_file_1$start_position)
+class(chr_file_1$start_position)
+chr_file_1$end_position <- as.numeric(chr_file_1$end_position)
+class(chr_file_1$end_position)
+
+colnames(chr_file_1) <- NULL
+```
+
+
+```{r}
+head(chr_file_1)
+```
+
+
+save as a tab delineated text file
+```{r}
+write.table(chr_file_1, file = "chr_file_1.txt", quote = FALSE, sep="\t")
+```
+
+
+
+```{r}
+head(elt2_peaks_L1_IDR)
+```
+
+
+creating annotated data file
+
+```{r}
+bound_genes_class_assignments <- read.table("Bound_Genes_Class_Assignments.txt", header = TRUE, sep = ",", dec = ".")
+
+bound_class_assignments <- as.data.frame(bound_genes_class_assignments)
+```
+
+
+```{r}
+merged_peaks_with_class_assignments <- merge(x=bound_class_assignments, y=elt2_peaks_L1_IDR, by.x="WBGeneID", by.y="feature") 
+
+print(merged_peaks_with_class_assignments)
+```
+
+```{r}
+merged_peaks_and_class <- merged_peaks_with_class_assignments %>% 
+  mutate(
+  L1_peak_summit_mean = rowMeans(merged_peaks_with_class_assignments[,c('L1_peak_1_summit', 'L1_peak_2_summit')], na.rm=TRUE)
+  )
+
+merged_peaks_and_class$seqnames <- as.character(merged_peaks_and_class$seqnames)
+merged_peaks_and_class$start_position <- as.numeric(merged_peaks_and_class$start_position)
+merged_peaks_and_class$end_position <- as.numeric(merged_peaks_and_class$end_position)
+
+print(merged_peaks_and_class)
+```
+
+~trouble shooting class column not being character values wait actually it is~
+```{r}
+class(merged_peaks_and_class$WBGeneID)
+class(merged_peaks_and_class$class)
+class(merged_peaks_and_class$seqnames)
+class(merged_peaks_and_class$start_position)
+class(merged_peaks_and_class$end_position)
+```
+
+
+L1_peak_summit_mean,(not including for the minute because code not working)
+
+```{r}
+anno_file_1 <- merged_peaks_and_class %>% 
+  select(WBGeneID, seqnames, start_position, end_position, class) %>%
+  remove_rownames
+
+colnames(anno_file_1) <- NULL
+```
+
+
+```{r}
+head(anno_file_1)
+```
+
+
+
+save as a tab delineated text file
+```{r}
+write.table(anno_file_1, file = "anno_file_1.txt", quote = FALSE, sep="\t")
+```
+
+
+
+
+
+
+chromoMap begins here
+
+```{r}
+chr_file_1 = "chr_file_1.txt"
+anno_file_1 = "anno_file_1.txt"
+```
+
+```{r}
+chromoMap(chr_file_1, anno_file_1)
+```
+
+
+
+
+
+
+
+
